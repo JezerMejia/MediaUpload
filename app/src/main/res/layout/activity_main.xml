@@ -29,12 +29,10 @@
         android:layout_marginBottom="16dp"
         app:srcCompat="@android:drawable/ic_input_add" />
 
-    <GridView
-        android:id="@+id/gridView"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rcvImages"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:numColumns="3"
-        android:layout_marginTop="56dp"
-        />
+        android:layout_marginTop="46dp" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

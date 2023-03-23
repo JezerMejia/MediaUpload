@@ -45,25 +45,33 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        val gridView = binding.gridView
         setSupportActionBar(binding.toolbar)
 
         binding.fab.setOnClickListener { view ->
-            openImageChooser();
+            openImageChooser()
         }
 
-        GlobalScope.launch {
-            try {
-                val response = apiService.getAllImages()
-                val url = "http://192.168.0.200/filedb/"
-                val files = response.files.map {ImgFile("${url}${it.name}", it.isDir)}.toTypedArray()
-                val adapter = ImageAdapter(files)
-                gridView.adapter = adapter
-            } catch (e: Exception) {
-                Log.e("myapp", e.message!!)
+        val adapter = ImageAdapter(listOf())
+        binding.rcvImages.layoutManager = GridLayoutManager(this, 3)
+        binding.rcvImages.adapter = adapter
+
+        runBlocking {
+            launch {
+                loadData()
             }
         }
+    }
 
+    private suspend fun loadData() {
+        try {
+            val response = apiService.getAllImages()
+            val url = BASE_URL
+            val files = response.files.map { ImgFile("${url}${it.name}", it.isDir) }
+            val adapter = ImageAdapter(files)
+            binding.rcvImages.adapter = adapter
+        } catch (e: Exception) {
+            Log.e("myapp", "getAllImages", e)
+        }
     }
 
     private fun openImageChooser() {
