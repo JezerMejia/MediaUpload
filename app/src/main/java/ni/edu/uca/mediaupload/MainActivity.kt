@@ -48,10 +48,6 @@ class MainActivity : AppCompatActivity() {
         val gridView = binding.gridView
         setSupportActionBar(binding.toolbar)
 
-        val navController = findNavController(R.id.nav_host_fragment_content_main)
-        appBarConfiguration = AppBarConfiguration(navController.graph)
-        setupActionBarWithNavController(navController, appBarConfiguration)
-
         binding.fab.setOnClickListener { view ->
             openImageChooser();
         }
