@@ -67,7 +67,6 @@ class MainActivity : AppCompatActivity() {
                             val itemPath = item.name!!.replace(".*filedb/".toRegex(), "")
                             try {
                                 apiService.deleteImage(itemPath)
-                                selectedItems.remove(item)
                             } catch (e: Exception) {
                                 println("$itemPath - $item")
                                 Log.e("myapp", "Delete image error", e)
@@ -77,6 +76,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 runBlocking {
                     launch {
+                        selectedItems.clear()
                         loadData()
                         setEditMode(false)
                     }
