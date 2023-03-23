@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
@@ -21,15 +22,41 @@ import java.io.IOException
 class ImageAdapter(private val files: List<ImgFile>) :
     RecyclerView.Adapter<ImageAdapter.ImageHolder>() {
 
+    val selectedItems = ArrayList<ImgFile>()
+
     inner class ImageHolder(private val binding: ImageItemBinding) :
         RecyclerView.ViewHolder(binding.root) {
+        private lateinit var imgFile: ImgFile
+
+        private fun selectItem() {
+            if (selectedItems.contains(imgFile)) {
+                selectedItems.remove(imgFile)
+                binding.root.setBackgroundColor(Color.WHITE)
+            } else {
+                selectedItems.add(imgFile)
+                binding.root.setBackgroundColor(Color.LTGRAY)
+            }
+            if (selectedItems.size > 0) {
+                MainActivity.mainActivity.setEditMode(true)
+            } else {
+                MainActivity.mainActivity.setEditMode(false)
+            }
+        }
+
         fun load(file: ImgFile) {
+            this.imgFile = file
+
             val imgView = binding.imgView
             val txtName = binding.txtName
 
             val fileName = file.name?.split("/")?.last() ?: "desconocido"
 
             txtName.text = fileName
+
+            binding.root.setOnLongClickListener { view ->
+                selectItem()
+                true
+            }
 
             if (file.isDir == true) {
                 imgView.setImageResource(R.drawable.baseline_folder_24)
@@ -38,7 +65,7 @@ class ImageAdapter(private val files: List<ImgFile>) :
 
             val regex = Regex("(\\S+(\\.(?i)(jpe?g|png|gif|bmp))$)")
             if (regex.matches(fileName)) {
-                imgView.setOnClickListener {
+                binding.root.setOnClickListener {
                     onClickImage(file)
                 }
                 Picasso.get().load(file.name).into(imgView)

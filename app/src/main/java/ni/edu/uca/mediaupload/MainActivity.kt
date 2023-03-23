@@ -31,9 +31,9 @@ class MainActivity : AppCompatActivity() {
     companion object {
         val BASE_URL = "http://192.168.1.7:8080/~jezerm/filedb/"
         const val REQUEST_CODE_PICK_IMAGE = 101
+        lateinit var mainActivity: MainActivity
     }
 
-    private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
 
     private var selectedImageUri: Uri? = null
@@ -48,6 +48,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        mainActivity = this
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
@@ -55,7 +57,31 @@ class MainActivity : AppCompatActivity() {
         verifyStoragePermissions(this)
 
         binding.fab.setOnClickListener { view ->
-            openImageChooser()
+            if (!doEdit) {
+                openImageChooser()
+            } else {
+                val selectedItems = (binding.rcvImages.adapter as ImageAdapter).selectedItems
+                for (item in selectedItems) {
+                    runBlocking {
+                        launch {
+                            val itemPath = item.name!!.replace(".*filedb/".toRegex(), "")
+                            try {
+                                apiService.deleteImage(itemPath)
+                                selectedItems.remove(item)
+                            } catch (e: Exception) {
+                                println("$itemPath - $item")
+                                Log.e("myapp", "Delete image error", e)
+                            }
+                        }
+                    }
+                }
+                runBlocking {
+                    launch {
+                        loadData()
+                        setEditMode(false)
+                    }
+                }
+            }
         }
 
         val adapter = ImageAdapter(listOf())
@@ -117,6 +143,26 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun enableEditMode() {
+        val drawable = resources.getDrawable(R.drawable.baseline_delete_24)
+        binding.fab.setImageDrawable(drawable)
+    }
+
+    private fun disableEditMode() {
+        val drawable = resources.getDrawable(R.drawable.baseline_add_24)
+        binding.fab.setImageDrawable(drawable)
+    }
+
+    private var doEdit = false
+    fun setEditMode(v: Boolean) {
+        doEdit = v
+        if (v) {
+            enableEditMode()
+        } else {
+            disableEditMode()
         }
     }
 

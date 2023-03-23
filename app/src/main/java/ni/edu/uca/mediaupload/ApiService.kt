@@ -11,4 +11,7 @@ interface ApiService {
 
     @GET(".")
     suspend fun getAllImages(): ImagesResponse
+
+    @DELETE("{fileName}")
+    suspend fun deleteImage(@Path("fileName") fileName: String)
 }
