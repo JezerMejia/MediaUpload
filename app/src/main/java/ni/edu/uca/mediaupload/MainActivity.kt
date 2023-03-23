@@ -1,32 +1,37 @@
 package ni.edu.uca.mediaupload
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
-import com.google.android.material.snackbar.Snackbar
-import androidx.appcompat.app.AppCompatActivity
-import androidx.navigation.findNavController
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.navigateUp
-import androidx.navigation.ui.setupActionBarWithNavController
 import android.view.Menu
 import android.view.MenuItem
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.navigation.ui.AppBarConfiguration
+import androidx.recyclerview.widget.GridLayoutManager
 import com.google.gson.GsonBuilder
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import ni.edu.uca.mediaupload.databinding.ActivityMainBinding
 import okhttp3.MediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.create
 import java.io.File
 
+
 class MainActivity : AppCompatActivity() {
+
+    companion object {
+        val BASE_URL = "http://192.168.1.7:8080/~jezerm/filedb/"
+        const val REQUEST_CODE_PICK_IMAGE = 101
+    }
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
@@ -34,7 +39,7 @@ class MainActivity : AppCompatActivity() {
     private var selectedImageUri: Uri? = null
 
     private val retrofit = Retrofit.Builder()
-        .baseUrl("http://192.168.0.200/filedb/")
+        .baseUrl(BASE_URL)
         .addConverterFactory(GsonConverterFactory.create(GsonBuilder().setLenient().create()))
         .build()
 
@@ -46,6 +51,8 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
+
+        verifyStoragePermissions()
 
         binding.fab.setOnClickListener { view ->
             openImageChooser()
@@ -91,16 +98,20 @@ class MainActivity : AppCompatActivity() {
                     selectedImageUri = data?.data
                     selectedImageUri?.let {
                         val file = File(getRealPathFromURI(it))
-                        val requestBody = RequestBody.create(MediaType.parse("application/octet-stream"), file)
-                        val image = MultipartBody.Part.createFormData("image", file.name, requestBody)
-                        Log.e("myapp", file.totalSpace.toString())
+                        val requestBody =
+                            RequestBody.create(MediaType.parse("application/octet-stream"), file)
+                        val image =
+                            MultipartBody.Part.createFormData("image", file.name, requestBody)
+                        Log.e("myapp", "File size: ${file.totalSpace}")
 
-                        GlobalScope.launch {
-                            try {
-                                apiService.uploadImage(file.name, requestBody)
-
-                            } catch (e: Exception) {
-                                Log.e("myapp", e.message!!)
+                        runBlocking {
+                            launch {
+                                try {
+                                    apiService.uploadImage(file.name, requestBody)
+                                } catch (e: Exception) {
+                                    Log.e("myapp", "Upload image error", e)
+                                }
+                                loadData()
                             }
                         }
                     }
@@ -109,18 +120,62 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        menuInflater.inflate(R.menu.menu_main, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        val id: Int = item.itemId
+        if (id == R.id.action_load) {
+            runBlocking {
+                launch {
+                    loadData()
+                }
+            }
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
     private fun getRealPathFromURI(uri: Uri): String {
         val projection = arrayOf(MediaStore.Images.Media.DATA)
         val cursor = contentResolver.query(uri, projection, null, null, null)
 
         val columnIndex = cursor?.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
         cursor?.moveToFirst()
-        val path = columnIndex?.let { cursor?.getString(it) }
+        val path = columnIndex?.let { cursor.getString(it) }
         cursor?.close()
         return path ?: ""
     }
 
-    companion object {
-        const val REQUEST_CODE_PICK_IMAGE = 101
+    // Storage Permissions
+    private val REQUEST_EXTERNAL_STORAGE = 1
+    private val PERMISSIONS_STORAGE = arrayOf<String>(
+        Manifest.permission.READ_EXTERNAL_STORAGE,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE
+    )
+
+    /**
+     * Checks if the app has permission to write to device storage
+     *
+     * If the app does not has permission then the user will be prompted to grant permissions
+     *
+     * @param activity
+     */
+    fun verifyStoragePermissions(activity: Activity?) {
+        // Check if we have write permission
+        val permission = ActivityCompat.checkSelfPermission(
+            activity!!,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        )
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            // We don't have permission so prompt the user
+            ActivityCompat.requestPermissions(
+                activity,
+                PERMISSIONS_STORAGE,
+                REQUEST_EXTERNAL_STORAGE
+            )
+        }
     }
 }
