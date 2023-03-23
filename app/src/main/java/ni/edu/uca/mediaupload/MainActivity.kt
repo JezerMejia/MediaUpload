@@ -52,7 +52,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
 
-        verifyStoragePermissions()
+        verifyStoragePermissions(this)
 
         binding.fab.setOnClickListener { view ->
             openImageChooser()
