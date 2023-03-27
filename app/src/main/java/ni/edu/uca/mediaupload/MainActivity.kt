@@ -12,7 +12,6 @@ import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.navigation.ui.AppBarConfiguration
 import androidx.recyclerview.widget.GridLayoutManager
 import com.google.gson.GsonBuilder
 import kotlinx.coroutines.launch
@@ -60,27 +59,7 @@ class MainActivity : AppCompatActivity() {
             if (!doEdit) {
                 openImageChooser()
             } else {
-                val selectedItems = (binding.rcvImages.adapter as ImageAdapter).selectedItems
-                for (item in selectedItems) {
-                    runBlocking {
-                        launch {
-                            val itemPath = item.name!!.replace(".*filedb/".toRegex(), "")
-                            try {
-                                apiService.deleteImage(itemPath)
-                            } catch (e: Exception) {
-                                println("$itemPath - $item")
-                                Log.e("myapp", "Delete image error", e)
-                            }
-                        }
-                    }
-                }
-                runBlocking {
-                    launch {
-                        selectedItems.clear()
-                        loadData()
-                        setEditMode(false)
-                    }
-                }
+                deleteSelectedItems()
             }
         }
 
@@ -96,10 +75,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private suspend fun loadData() {
+        val selectedItems = (binding.rcvImages.adapter as ImageAdapter).selectedItems
+        selectedItems.clear()
+        setEditMode(false)
         try {
             val response = apiService.getAllImages()
             val url = BASE_URL
-            val files = response.files.map { ImgFile("${url}${it.name}", it.isDir) }
+            val files = response.files.map { ImgFile("${url}${it.name}", it.path, it.mimeType, it.isDir) }
             val adapter = ImageAdapter(files)
             binding.rcvImages.adapter = adapter
         } catch (e: Exception) {
@@ -113,6 +95,26 @@ class MainActivity : AppCompatActivity() {
             val mimeTypes = arrayOf("image/jpeg", "image/png")
             it.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
             startActivityForResult(it, REQUEST_CODE_PICK_IMAGE)
+        }
+    }
+
+    private fun deleteSelectedItems() {
+        val selectedItems = (binding.rcvImages.adapter as ImageAdapter).selectedItems
+        runBlocking {
+            launch {
+                for (item in selectedItems) {
+                    val itemPath = item.name!!.replace(".*filedb/".toRegex(), "")
+                    try {
+                        apiService.deleteImage(itemPath)
+                    } catch (e: Exception) {
+                        println("$itemPath - $item")
+                        Log.e("myapp", "Delete image error", e)
+                    }
+                }
+                selectedItems.clear()
+                loadData()
+                setEditMode(false)
+            }
         }
     }
 
@@ -209,7 +211,7 @@ class MainActivity : AppCompatActivity() {
      *
      * @param activity
      */
-    fun verifyStoragePermissions(activity: Activity?) {
+    private fun verifyStoragePermissions(activity: Activity?) {
         // Check if we have write permission
         val permission = ActivityCompat.checkSelfPermission(
             activity!!,
